@@ -42,23 +42,21 @@ func (c *Client) GetSnapshot(ctx context.Context, camera Camera, opts SnapshotOp
 }
 
 func snapshotPath(channel int, opts SnapshotOptions) string {
-	if opts.Width == 0 {
-		opts.Width = 1280
+	values := url.Values{}
+
+	if opts.Width > 0 {
+		values.Set("videoResolutionWidth", strconv.Itoa(opts.Width))
 	}
 
-	if opts.Height == 0 {
-		opts.Height = 720
+	if opts.Height > 0 {
+		values.Set("videoResolutionHeight", strconv.Itoa(opts.Height))
 	}
 
 	if opts.ImageQuality == "" {
 		opts.ImageQuality = "better" //best, better, normal, general
 	}
 
-	values := url.Values{}
-
 	values.Set("snapShotImageType", "JPEG")
-	values.Set("videoResolutionWidth", strconv.Itoa(opts.Width))
-	values.Set("videoResolutionHeight", strconv.Itoa(opts.Height))
 	values.Set("imageQuality", opts.ImageQuality)
 
 	return fmt.Sprintf(
