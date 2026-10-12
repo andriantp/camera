@@ -42,6 +42,8 @@ Simple and consistent Go API without exposing protocol-specific XML or HTTP deta
 - EnableThermometry & DisableThermometry
 - GetThermometryRulesTemperatureInfo
 - Reboot
+- GetHTTPHosts
+- GetMotionDetection
 
 ## Installation
 
