@@ -43,9 +43,9 @@ func (c *Client) GetMotionDetection(ctx context.Context, camera Camera) (*model.
 	return xml.ParseMotionDetection(resp)
 }
 
-func (c *Client) SetVMDSensitivity(ctx context.Context, camera Camera, level int) error {
+func (c *Client) SetMotionSensitivity(ctx context.Context, camera Camera, level int) error {
 	if level < 0 || level > 100 {
-		return fmt.Errorf("VMD sensitivity must be between 0 and 100")
+		return fmt.Errorf("Motion sensitivity must be between 0 and 100")
 	}
 
 	path := fmt.Sprintf(
@@ -81,7 +81,7 @@ func (c *Client) SetVMDSensitivity(ctx context.Context, camera Camera, level int
 		return fmt.Errorf("read motion detection: %w", err)
 	}
 
-	body, err = xml.SetVMDSensitivity(body, level)
+	body, err = xml.SetMotionSensitivity(body, level)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (c *Client) SetVMDSensitivity(ctx context.Context, camera Camera, level int
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return fmt.Errorf("set VMD sensitivity: %w", err)
+		return fmt.Errorf("set Motion sensitivity: %w", err)
 	}
 
 	defer resp.Body.Close()
@@ -103,7 +103,7 @@ func (c *Client) SetVMDSensitivity(ctx context.Context, camera Camera, level int
 		body, _ := io.ReadAll(resp.Body)
 
 		return fmt.Errorf(
-			"set VMD sensitivity: status %d: %s",
+			"set Motion sensitivity: status %d: %s",
 			resp.StatusCode,
 			body,
 		)

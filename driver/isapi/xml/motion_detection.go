@@ -59,10 +59,10 @@ func ParseMotionDetection(resp *http.Response) (*model.MotionDetection, error) {
 	}, nil
 }
 
-func SetVMDSensitivity(body []byte, level int) ([]byte, error) {
+func SetMotionSensitivity(body []byte, level int) ([]byte, error) {
 	if level < 0 || level > 100 {
 		return nil, fmt.Errorf(
-			"VMD sensitivity must be between 0 and 100",
+			"Motion sensitivity must be between 0 and 100",
 		)
 	}
 
