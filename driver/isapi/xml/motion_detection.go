@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/andriantp/camera/model"
 )
@@ -33,9 +34,7 @@ type motionDetectionGridMap struct {
 	GridMap string `xml:"gridMap"`
 }
 
-func ParseMotionDetection(
-	resp *http.Response,
-) (*model.MotionDetection, error) {
+func ParseMotionDetection(resp *http.Response) (*model.MotionDetection, error) {
 	var data motionDetection
 
 	if err := xml.NewDecoder(resp.Body).Decode(&data); err != nil {
@@ -58,4 +57,48 @@ func ParseMotionDetection(
 			GridMap:          data.Layout.Layout.GridMap,
 		},
 	}, nil
+}
+
+func SetVMDSensitivity(body []byte, level int) ([]byte, error) {
+	if level < 0 || level > 100 {
+		return nil, fmt.Errorf(
+			"VMD sensitivity must be between 0 and 100",
+		)
+	}
+
+	re := regexp.MustCompile(
+		`(<MotionDetectionLayout\b[^>]*>[\s\S]*?<sensitivityLevel>)[0-9]+(</sensitivityLevel>)`,
+	)
+
+	if !re.Match(body) {
+		return nil, fmt.Errorf("sensitivityLevel not found")
+	}
+
+	replacement := []byte(fmt.Sprintf("${1}%d${2}", level))
+	return re.ReplaceAll(body, replacement), nil
+}
+
+type responseStatus struct {
+	StatusCode    int    `xml:"statusCode"`
+	StatusString  string `xml:"statusString"`
+	SubStatusCode string `xml:"subStatusCode"`
+}
+
+func ParseResponseStatus(resp *http.Response) error {
+	var data responseStatus
+
+	if err := xml.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return fmt.Errorf("decode response status: %w", err)
+	}
+
+	if data.StatusCode != 1 || data.SubStatusCode != "ok" {
+		return fmt.Errorf(
+			"camera rejected request: status %d, %s (%s)",
+			data.StatusCode,
+			data.StatusString,
+			data.SubStatusCode,
+		)
+	}
+
+	return nil
 }
