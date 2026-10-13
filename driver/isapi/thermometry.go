@@ -13,15 +13,7 @@ import (
 	"github.com/andriantp/camera/model"
 )
 
-func (c *Client) EnableThermometry(ctx context.Context, camera Camera) error {
-	return c.setThermometryEnabled(ctx, camera, true)
-}
-
-func (c *Client) DisableThermometry(ctx context.Context, camera Camera) error {
-	return c.setThermometryEnabled(ctx, camera, false)
-}
-
-func (c *Client) setThermometryEnabled(ctx context.Context, camera Camera, enabled bool) error {
+func (c *Client) SetThermometry(ctx context.Context, camera Camera, enabled bool) error {
 	path := fmt.Sprintf(
 		"/ISAPI/Thermal/channels/%d/thermometry/basicParam",
 		camera.Channel,

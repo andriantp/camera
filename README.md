@@ -39,7 +39,7 @@ Simple and consistent Go API without exposing protocol-specific XML or HTTP deta
 - GetStorage
 - ContentSearch
 - ContentDownload
-- EnableThermometry & DisableThermometry
+- SetThermometry
 - GetThermometryRulesTemperatureInfo
 - Reboot
 - GetHTTPHosts
