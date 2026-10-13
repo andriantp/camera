@@ -49,3 +49,41 @@ func ParseHTTPHosts(resp *http.Response) ([]model.HTTPHostNotification, error) {
 
 	return result, nil
 }
+
+func MarshalHTTPHostNotification(host model.HTTPHostNotification) ([]byte, error) {
+	type httpHostNotification struct {
+		XMLName                  xml.Name `xml:"HttpHostNotification"`
+		Version                  string   `xml:"version,attr"`
+		XMLNS                    string   `xml:"xmlns,attr"`
+		ID                       int      `xml:"id"`
+		URL                      string   `xml:"url"`
+		ProtocolType             string   `xml:"protocolType"`
+		ParameterFormatType      string   `xml:"parameterFormatType"`
+		AddressingFormatType     string   `xml:"addressingFormatType"`
+		IPAddress                string   `xml:"ipAddress"`
+		PortNo                   int      `xml:"portNo"`
+		UserName                 string   `xml:"userName"`
+		HTTPAuthenticationMethod string   `xml:"httpAuthenticationMethod"`
+	}
+
+	data := httpHostNotification{
+		Version:                  "2.0",
+		XMLNS:                    "http://www.isapi.org/ver20/XMLSchema",
+		ID:                       host.ID,
+		URL:                      host.URL,
+		ProtocolType:             host.ProtocolType,
+		ParameterFormatType:      host.ParameterFormatType,
+		AddressingFormatType:     host.AddressingFormatType,
+		IPAddress:                host.IPAddress,
+		PortNo:                   host.PortNo,
+		UserName:                 host.UserName,
+		HTTPAuthenticationMethod: host.HTTPAuthenticationMethod,
+	}
+
+	body, err := xml.MarshalIndent(data, "", "    ")
+	if err != nil {
+		return nil, fmt.Errorf("marshal HTTP host notification: %w", err)
+	}
+
+	return append([]byte(xml.Header), body...), nil
+}
