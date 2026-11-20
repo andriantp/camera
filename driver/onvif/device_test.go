@@ -26,6 +26,7 @@ type fakeCamera struct {
 	moveCalls         atomic.Int32
 
 	unavailable atomic.Bool  // fail GetCapabilities (device discovery)
+	rejectMove  atomic.Bool  // answer RelativeMove with a SOAP fault
 	statusDelay atomic.Int64 // delay (ns) before answering GetStatus
 }
 
@@ -70,7 +71,23 @@ func (f *fakeCamera) handle(w http.ResponseWriter, r *http.Request) {
 
 	case strings.Contains(soap, "RelativeMove"):
 		f.moveCalls.Add(1)
+		if f.rejectMove.Load() {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("SOAP fault"))
+			return
+		}
 		_, _ = w.Write([]byte(`<Envelope><Body><RelativeMoveResponse/></Body></Envelope>`))
+
+	case strings.Contains(soap, "GetConfigurations"):
+		_, _ = w.Write([]byte(`<Envelope><Body><GetConfigurationsResponse><PTZConfiguration>
+			<DefaultPTZSpeed><PanTilt x="0.5" y="0.5"/></DefaultPTZSpeed>
+			<PanTiltLimits><Range><XRange><Min>-1</Min><Max>1</Max></XRange><YRange><Min>-1</Min><Max>1</Max></YRange></Range></PanTiltLimits>
+		</PTZConfiguration></GetConfigurationsResponse></Body></Envelope>`))
+
+	case strings.Contains(soap, "GetProfiles"):
+		_, _ = w.Write([]byte(`<Envelope><Body><GetProfilesResponse>
+			<Profiles token="profile_1"><Name>main</Name></Profiles>
+		</GetProfilesResponse></Body></Envelope>`))
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)

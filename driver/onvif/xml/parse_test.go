@@ -68,6 +68,69 @@ func TestParseConfiguration(t *testing.T) {
 	}
 }
 
+func TestParseCapabilities(t *testing.T) {
+	resp := response(http.StatusOK, `<Envelope><Body><GetCapabilitiesResponse><Capabilities>
+		<Analytics><XAddr>http://cam/onvif/analytics</XAddr></Analytics>
+		<Device><XAddr>http://cam/onvif/device</XAddr></Device>
+		<Events><XAddr>http://cam/onvif/events</XAddr></Events>
+		<Imaging><XAddr>http://cam/onvif/imaging</XAddr></Imaging>
+		<PTZ><XAddr>http://cam/onvif/ptz</XAddr></PTZ>
+		<Media>
+			<XAddr>http://cam/onvif/media</XAddr>
+			<StreamingCapabilities><RTPMulticast>false</RTPMulticast><RTP_TCP>true</RTP_TCP><RTP_RTSP_TCP>true</RTP_RTSP_TCP></StreamingCapabilities>
+		</Media>
+	</Capabilities></GetCapabilitiesResponse></Body></Envelope>`)
+
+	got, err := ParseCapabilities(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	o := got.Onvif
+	if o.PTZ.XAddr != "http://cam/onvif/ptz" || o.Device.XAddr != "http://cam/onvif/device" ||
+		o.Events.XAddr != "http://cam/onvif/events" || o.Imaging.XAddr != "http://cam/onvif/imaging" ||
+		o.Analytics.XAddr != "http://cam/onvif/analytics" || o.Media.XAddr != "http://cam/onvif/media" {
+		t.Errorf("endpoints = %+v", o)
+	}
+	if o.Media.Streaming.RTPMulticast || !o.Media.Streaming.RTPTCP || !o.Media.Streaming.RTPRTSPTCP {
+		t.Errorf("streaming = %+v", o.Media.Streaming)
+	}
+}
+
+func TestParseStatus(t *testing.T) {
+	resp := response(http.StatusOK, `<Envelope><Body><GetStatusResponse><PTZStatus>
+		<Position><PanTilt x="0.5" y="-0.25"/></Position>
+		<MoveStatus><PanTilt>MOVING</PanTilt></MoveStatus>
+		<Error>0</Error>
+	</PTZStatus></GetStatusResponse></Body></Envelope>`)
+
+	got, err := ParseStatus(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Position.X != 0.5 || got.Position.Y != -0.25 || got.MoveStatus != "MOVING" || got.Error != 0 {
+		t.Errorf("got %+v", got)
+	}
+}
+
+func TestParsersRejectInvalidXML(t *testing.T) {
+	parsers := map[string]func(*http.Response) error{
+		"ParseCapabilities":  func(r *http.Response) error { _, err := ParseCapabilities(r); return err },
+		"ParseConfiguration": func(r *http.Response) error { _, err := ParseConfiguration(r); return err },
+		"ParseProfiles":      func(r *http.Response) error { _, err := ParseProfiles(r); return err },
+		"ParseStatus":        func(r *http.Response) error { _, err := ParseStatus(r); return err },
+	}
+
+	for name, parse := range parsers {
+		t.Run(name, func(t *testing.T) {
+			if err := parse(response(http.StatusOK, "<broken")); err == nil {
+				t.Error("expected error for invalid XML")
+			}
+		})
+	}
+}
+
 func TestParseErrorsIncludeStatusCode(t *testing.T) {
 	parsers := map[string]func(*http.Response) error{
 		"ParseCapabilities":  func(r *http.Response) error { _, err := ParseCapabilities(r); return err },
