@@ -1,6 +1,23 @@
-examples/common/.env
+# Camera credentials (keep the committed template)
+.env
+.env.*
+!.env.example
 
+# Go build and test artifacts
+*.exe
+*.test
+*.out
+*.prof
+/bin/
+go.work
+go.work.sum
 
+# Files written by the examples (snapshots and downloaded recordings)
+examples/**/*.jpg
+examples/**/*.mp4
 
-
-
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
