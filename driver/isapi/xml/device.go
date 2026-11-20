@@ -28,7 +28,7 @@ func ParseDeviceInfo(resp *http.Response) (*model.DeviceInfo, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s", body)
+		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, body)
 	}
 
 	var data deviceInfo

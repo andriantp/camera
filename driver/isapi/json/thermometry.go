@@ -31,6 +31,8 @@ type thermometryPoint struct {
 }
 
 func ParseThermometryRulesTemperatureInfo(resp *http.Response) ([]model.ThermometryRulesTemperatureInfo, error) {
+	defer resp.Body.Close()
+
 	var data thermometryRulesTemperatureInfoResponse
 
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {

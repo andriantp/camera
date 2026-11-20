@@ -57,7 +57,7 @@ func ParseCapabilities(resp *http.Response) (*model.Capabilities, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s", body)
+		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, body)
 	}
 
 	var env envelopeCapabilities

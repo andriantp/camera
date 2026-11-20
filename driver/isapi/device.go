@@ -19,22 +19,15 @@ func (c *Client) GetDeviceInfo(ctx context.Context, camera Camera) (*model.Devic
 		nil,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get device info: %w", err)
 	}
 
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-
-		return nil, fmt.Errorf(
-			"get device info: status %d: %s",
-			resp.StatusCode,
-			body,
-		)
+	info, err := xml.ParseDeviceInfo(resp)
+	if err != nil {
+		return nil, fmt.Errorf("get device info: %w", err)
 	}
 
-	return xml.ParseDeviceInfo(resp)
+	return info, nil
 }
 
 func (c *Client) Reboot(ctx context.Context, camera Camera) error {

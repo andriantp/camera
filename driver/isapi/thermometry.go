@@ -78,23 +78,23 @@ func (c *Client) SetThermometry(ctx context.Context, camera Camera, enabled bool
 	return nil
 }
 
-func setThermometryEnabledXML(body []byte, enabled bool) ([]byte, error) {
-	re := regexp.MustCompile(
-		`(?s)(<ThermometryBasicParam\b[^>]*>.*?<enabled>)[^<]*(</enabled>)`,
-	)
+var thermometryEnabledRe = regexp.MustCompile(
+	`(?s)(<ThermometryBasicParam\b[^>]*>.*?<enabled>)[^<]*(</enabled>)`,
+)
 
+func setThermometryEnabledXML(body []byte, enabled bool) ([]byte, error) {
 	value := "false"
 	if enabled {
 		value = "true"
 	}
 
-	if !re.Match(body) {
+	if !thermometryEnabledRe.Match(body) {
 		return nil, errors.New(
 			"thermometry basic param: enabled element not found",
 		)
 	}
 
-	return re.ReplaceAll(
+	return thermometryEnabledRe.ReplaceAll(
 		body,
 		[]byte("${1}"+value+"${2}"),
 	), nil

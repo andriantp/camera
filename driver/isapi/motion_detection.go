@@ -45,7 +45,7 @@ func (c *Client) GetMotionDetection(ctx context.Context, camera Camera) (*model.
 
 func (c *Client) SetMotionSensitivity(ctx context.Context, camera Camera, level int) error {
 	if level < 0 || level > 100 {
-		return fmt.Errorf("Motion sensitivity must be between 0 and 100")
+		return fmt.Errorf("motion sensitivity must be between 0 and 100")
 	}
 
 	path := fmt.Sprintf(
@@ -94,7 +94,7 @@ func (c *Client) SetMotionSensitivity(ctx context.Context, camera Camera, level 
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return fmt.Errorf("set Motion sensitivity: %w", err)
+		return fmt.Errorf("set motion sensitivity: %w", err)
 	}
 
 	defer resp.Body.Close()
@@ -103,7 +103,7 @@ func (c *Client) SetMotionSensitivity(ctx context.Context, camera Camera, level 
 		body, _ := io.ReadAll(resp.Body)
 
 		return fmt.Errorf(
-			"set Motion sensitivity: status %d: %s",
+			"set motion sensitivity: status %d: %s",
 			resp.StatusCode,
 			body,
 		)

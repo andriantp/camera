@@ -25,6 +25,8 @@ type httpHostNotification struct {
 }
 
 func ParseHTTPHosts(resp *http.Response) ([]model.HTTPHostNotification, error) {
+	defer resp.Body.Close()
+
 	var data httpHostNotificationList
 
 	if err := xml.NewDecoder(resp.Body).Decode(&data); err != nil {

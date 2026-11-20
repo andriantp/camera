@@ -35,6 +35,8 @@ type motionDetectionGridMap struct {
 }
 
 func ParseMotionDetection(resp *http.Response) (*model.MotionDetection, error) {
+	defer resp.Body.Close()
+
 	var data motionDetection
 
 	if err := xml.NewDecoder(resp.Body).Decode(&data); err != nil {
@@ -59,23 +61,20 @@ func ParseMotionDetection(resp *http.Response) (*model.MotionDetection, error) {
 	}, nil
 }
 
+var sensitivityLevelRe = regexp.MustCompile(
+	`(<MotionDetectionLayout\b[^>]*>[\s\S]*?<sensitivityLevel>)[0-9]+(</sensitivityLevel>)`,
+)
+
+// SetMotionSensitivity replaces the sensitivityLevel in a raw
+// MotionDetection XML document, keeping all other fields untouched.
+// The caller is responsible for validating level.
 func SetMotionSensitivity(body []byte, level int) ([]byte, error) {
-	if level < 0 || level > 100 {
-		return nil, fmt.Errorf(
-			"Motion sensitivity must be between 0 and 100",
-		)
-	}
-
-	re := regexp.MustCompile(
-		`(<MotionDetectionLayout\b[^>]*>[\s\S]*?<sensitivityLevel>)[0-9]+(</sensitivityLevel>)`,
-	)
-
-	if !re.Match(body) {
+	if !sensitivityLevelRe.Match(body) {
 		return nil, fmt.Errorf("sensitivityLevel not found")
 	}
 
 	replacement := []byte(fmt.Sprintf("${1}%d${2}", level))
-	return re.ReplaceAll(body, replacement), nil
+	return sensitivityLevelRe.ReplaceAll(body, replacement), nil
 }
 
 type responseStatus struct {
@@ -85,6 +84,8 @@ type responseStatus struct {
 }
 
 func ParseResponseStatus(resp *http.Response) error {
+	defer resp.Body.Close()
+
 	var data responseStatus
 
 	if err := xml.NewDecoder(resp.Body).Decode(&data); err != nil {

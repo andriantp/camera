@@ -17,6 +17,10 @@ func (c *Client) SetZoom(ctx context.Context, camera Camera, zoom float64) (*mod
 		return nil, fmt.Errorf("read range: %w", err)
 	}
 
+	if cap.Zoom.Absolute.Min == 0 && cap.Zoom.Absolute.Max == 0 {
+		return nil, fmt.Errorf("absolute zoom is not supported")
+	}
+
 	targetZoom := zoom
 	requestZoom := zoom / 10
 

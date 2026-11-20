@@ -24,5 +24,3 @@ type Speed struct {
 	Pan  int `json:"pan"`
 	Tilt int `json:"tilt"`
 }
-
-

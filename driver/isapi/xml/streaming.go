@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/andriantp/camera/model"
 )
@@ -46,7 +44,7 @@ func ParseStreaming(resp *http.Response) ([]model.StreamingChannel, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s", body)
+		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, body)
 	}
 
 	var src streamingChannelListXML
@@ -247,24 +245,4 @@ func ParseStreamingCapabilities(resp *http.Response) (*model.StreamingCapabiliti
 	}
 
 	return result, nil
-}
-
-func parseIntList(value string) []int {
-	if value == "" {
-		return nil
-	}
-
-	parts := strings.Split(value, ",")
-	result := make([]int, 0, len(parts))
-
-	for _, part := range parts {
-		n, err := strconv.Atoi(strings.TrimSpace(part))
-		if err != nil {
-			continue
-		}
-
-		result = append(result, n)
-	}
-
-	return result
 }

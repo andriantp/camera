@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/andriantp/camera/driver/isapi"
 	"github.com/andriantp/camera/examples/common"
 )
@@ -66,7 +65,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		printJSONIter("SEARCH", body)
+		printJSONRaw("SEARCH", body)
 
 	case "DOWNLOAD":
 		start := time.Date(2026, 8, 26, 16, 53, 51, 0, time.UTC)
@@ -124,20 +123,18 @@ func printJSON(title string, v any) {
 	fmt.Println(string(js))
 }
 
-func printJSONIter(title string, v any) {
-	json := jsoniter.Config{
-		EscapeHTML:             false,
-		SortMapKeys:            true,
-		ValidateJsonRawMessage: true,
-	}.Froze()
+// printJSONRaw prints v without HTML escaping, so playback URIs keep their
+// literal '&' instead of "&".
+func printJSONRaw(title string, v any) {
+	fmt.Printf("========== %s ==========\n", title)
 
-	js, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+
+	if err := enc.Encode(v); err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Printf("========== %s ==========\n", title)
-	fmt.Println(string(js))
 }
 
 func downloadFile(body io.Reader, filename string, expectedSize int64) error {

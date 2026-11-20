@@ -60,7 +60,7 @@ func ParseConfiguration(resp *http.Response) (*model.Configuration, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s", body)
+		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, body)
 	}
 
 	var env envelopeConfigurationXML

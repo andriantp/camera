@@ -36,7 +36,7 @@ func ParsePresets(resp *http.Response) ([]model.Preset, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s", body)
+		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, body)
 	}
 
 	var src presetListXML
