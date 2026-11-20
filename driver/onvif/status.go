@@ -13,7 +13,7 @@ import (
 )
 
 func (c *Client) GetStatus(ctx context.Context, camera Camera) (*model.Status, error) {
-	dev, err := c.device(camera)
+	dev, err := c.device(ctx, camera)
 	if err != nil {
 		return nil, fmt.Errorf("create device: %w", err)
 	}
