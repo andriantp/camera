@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/icholy/digest"
 )
@@ -69,9 +71,12 @@ func (c *Client) requestDownload(ctx context.Context, method string, camera Came
 }
 
 func (c *Client) do(ctx context.Context, client *http.Client, method string, camera Camera, path string, body io.Reader) (*http.Response, error) {
-	url := fmt.Sprintf("http://%s%s", camera.Host, path)
+	base, err := baseURL(camera.Host)
+	if err != nil {
+		return nil, err
+	}
 
-	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	req, err := http.NewRequestWithContext(ctx, method, base+path, body)
 	if err != nil {
 		return nil, fmt.Errorf("new request: %w", err)
 	}
@@ -81,4 +86,31 @@ func (c *Client) do(ctx context.Context, client *http.Client, method string, cam
 	}
 
 	return client.Do(req)
+}
+
+// baseURL returns "scheme://host[:port]" for a camera host.
+//
+// Host may be given without a scheme ("192.168.1.64", "192.168.1.64:8080"), in which
+// case HTTP is used, or with an explicit scheme ("https://192.168.1.64",
+// "https://192.168.1.64:8443"). Any path or trailing slash is ignored.
+func baseURL(host string) (string, error) {
+	raw := host
+	if !strings.Contains(raw, "://") {
+		raw = "http://" + raw
+	}
+
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", fmt.Errorf("invalid camera host %q: %w", host, err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", fmt.Errorf("invalid camera host %q: scheme must be http or https", host)
+	}
+
+	if u.Host == "" {
+		return "", fmt.Errorf("invalid camera host %q: missing host", host)
+	}
+
+	return u.Scheme + "://" + u.Host, nil
 }

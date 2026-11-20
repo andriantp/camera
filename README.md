@@ -72,6 +72,45 @@ if errors.Is(err, isapi.ErrMoveTimeout) {
 }
 ```
 
+### HTTPS
+
+Prefix the camera host with `https://` to use HTTPS for the ISAPI driver
+(a host without a scheme uses HTTP, as before):
+
+```go
+isapi.Camera{
+    Credential: camera.Credential{
+        Host:     "https://192.168.1.64", // or "https://192.168.1.64:8443"
+        Username: "...",
+        Password: "...",
+    },
+    Channel: 1,
+}
+```
+
+Cameras usually ship a self-signed certificate, which is rejected by default.
+Trust it explicitly with `Config.TLSConfig`:
+
+```go
+pem, _ := os.ReadFile("camera.crt") // exported from the camera web UI
+roots := x509.NewCertPool()
+roots.AppendCertsFromPEM(pem)
+
+client := camera.New(camera.Config{
+    TLSConfig: &tls.Config{RootCAs: roots},
+})
+```
+
+`&tls.Config{InsecureSkipVerify: true}` also works, but disables certificate
+checks and exposes credentials to man-in-the-middle attacks; use it only on a
+trusted network.
+
+The ONVIF driver always uses HTTP (the underlying library hardcodes it). An
+`https://` host is accepted so one `Credential` can be shared with ISAPI: the
+scheme and HTTPS port are dropped and ONVIF connects to the default HTTP port.
+If ONVIF listens on a non-default port, give the ONVIF client its own
+`Credential` with `"host:port"`.
+
 ### ONVIF
 
 ```go

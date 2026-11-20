@@ -1,11 +1,16 @@
 package camera
 
 import (
+	"crypto/tls"
 	"net/http"
 	"time"
 )
 
 type Credential struct {
+	// Host is the camera address, optionally with a scheme and port:
+	// "192.168.1.64", "192.168.1.64:8080" (HTTP) or "https://192.168.1.64[:8443]".
+	// Without a scheme, HTTP is used. The ONVIF driver always uses HTTP; see
+	// the onvif package for how it interprets an https:// host.
 	Host     string
 	Username string
 	Password string
@@ -22,6 +27,13 @@ type Config struct {
 	// target (e.g. SetAbsolute, SetZoom) keep polling before giving up.
 	// A context deadline, if shorter, still applies. Default: 5s.
 	MoveTimeout time.Duration
+
+	// TLSConfig configures HTTPS connections to cameras whose Host uses the
+	// https:// scheme. Cameras usually ship self-signed certificates, so set
+	// RootCAs to trust the camera's certificate (recommended), or
+	// InsecureSkipVerify to skip verification (vulnerable to MITM).
+	// Nil verifies certificates against the system roots.
+	TLSConfig *tls.Config
 }
 
 type Client struct {
@@ -47,6 +59,11 @@ func New(cfg Config) *Client {
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
+	if cfg.TLSConfig != nil {
+		transport.TLSClientConfig = cfg.TLSConfig.Clone()
 	}
 
 	return &Client{

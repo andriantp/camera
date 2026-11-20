@@ -2,7 +2,9 @@ package onvif
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	usego "github.com/use-go/onvif"
@@ -44,7 +46,7 @@ func (c *Client) withDevice(ctx context.Context, camera Camera, fn func(dev *use
 
 	if cd.dev == nil {
 		dev, err := usego.NewDevice(usego.DeviceParams{
-			Xaddr:      camera.Host,
+			Xaddr:      onvifAddr(camera.Host),
 			Username:   camera.Username,
 			Password:   camera.Password,
 			HttpClient: cd.httpClient(c.http),
@@ -98,4 +100,38 @@ type contextTransport struct {
 
 func (t *contextTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.base.RoundTrip(req.WithContext(t.ctx))
+}
+
+// onvifAddr converts a camera Host into the "host[:port]" that use-go/onvif
+// expects; the library always prepends "http://" itself, so ONVIF in this
+// package runs over HTTP only.
+//
+//	"192.168.1.64:8080"         -> "192.168.1.64:8080"
+//	"http://192.168.1.64:8080"  -> "192.168.1.64:8080"
+//	"https://192.168.1.64:8443" -> "192.168.1.64"
+//
+// For https:// the port belongs to HTTPS, so it is dropped and ONVIF uses the
+// default HTTP port.
+//
+// A Credential shared with the ISAPI driver can therefore use an https://
+// host. If ONVIF listens on a non-default HTTP port, use a separate
+// Credential with "host:port" for the ONVIF client.
+func onvifAddr(host string) string {
+	scheme, rest, found := strings.Cut(host, "://")
+	if !found {
+		return strings.TrimRight(host, "/")
+	}
+
+	rest, _, _ = strings.Cut(rest, "/")
+
+	if strings.EqualFold(scheme, "https") {
+		if h, _, err := net.SplitHostPort(rest); err == nil {
+			if strings.Contains(h, ":") { // IPv6 literal needs brackets in a URL
+				return "[" + h + "]"
+			}
+			return h
+		}
+	}
+
+	return rest
 }

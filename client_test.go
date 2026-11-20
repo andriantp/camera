@@ -1,6 +1,8 @@
 package camera
 
 import (
+	"crypto/tls"
+	"net/http"
 	"testing"
 	"time"
 )
@@ -37,5 +39,25 @@ func TestNewCustomConfig(t *testing.T) {
 	}
 	if c.HTTP().Transport != c.HTTPDownload().Transport {
 		t.Error("regular and download clients should share one transport")
+	}
+}
+
+func TestNewTLSConfig(t *testing.T) {
+	cfg := &tls.Config{ServerName: "camera.local"}
+	c := New(Config{TLSConfig: cfg})
+
+	tr, ok := c.HTTP().Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("transport is %T, want *http.Transport", c.HTTP().Transport)
+	}
+	if tr.TLSClientConfig == nil || tr.TLSClientConfig.ServerName != "camera.local" {
+		t.Fatalf("TLSClientConfig = %+v", tr.TLSClientConfig)
+	}
+	if tr.TLSClientConfig == cfg {
+		t.Error("TLSConfig should be cloned, not shared with the caller")
+	}
+
+	if tr := New(Config{}).HTTP().Transport.(*http.Transport); tr.TLSClientConfig != nil {
+		t.Error("TLSClientConfig should be nil when TLSConfig is not set")
 	}
 }
