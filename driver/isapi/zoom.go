@@ -73,7 +73,7 @@ func (c *Client) waitZoom(ctx context.Context, camera Camera, target float64) (*
 			return nil, err
 		}
 
-		if current.Zoom == target {
+		if almostEqual(current.Zoom, target) {
 			return current, nil
 		}
 
