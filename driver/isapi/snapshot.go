@@ -7,7 +7,11 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
+
+// maxErrorBody limits how much of an error response body is read into memory.
+const maxErrorBody = 4 << 10
 
 type SnapshotOptions struct {
 	Width        int
@@ -15,6 +19,13 @@ type SnapshotOptions struct {
 	ImageQuality string
 }
 
+// GetSnapshot fetches a JPEG snapshot from the camera and returns the image
+// as a stream.
+//
+// The returned size is the response Content-Length and is -1 when the camera
+// does not send one (e.g. chunked encoding), so do not rely on it to size a
+// buffer. The caller must read the body to EOF and close it; otherwise the
+// underlying connection cannot be reused.
 func (c *Client) GetSnapshot(ctx context.Context, camera Camera, opts SnapshotOptions) (int64, io.ReadCloser, error) {
 	resp, err := c.request(
 		ctx,
@@ -28,8 +39,7 @@ func (c *Client) GetSnapshot(ctx context.Context, camera Camera, opts SnapshotOp
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		body := readErrorBody(resp)
 
 		return 0, nil, fmt.Errorf(
 			"get snapshot: status %d: %s",
@@ -38,7 +48,28 @@ func (c *Client) GetSnapshot(ctx context.Context, camera Camera, opts SnapshotOp
 		)
 	}
 
+	// Some firmware answers 200 with an XML error instead of an image.
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" &&
+		!strings.HasPrefix(strings.ToLower(contentType), "image/") {
+		body := readErrorBody(resp)
+
+		return 0, nil, fmt.Errorf(
+			"get snapshot: unexpected content type %q: %s",
+			contentType,
+			body,
+		)
+	}
+
 	return resp.ContentLength, resp.Body, nil
+}
+
+// readErrorBody reads at most maxErrorBody bytes of resp.Body for an error
+// message, then closes the body.
+func readErrorBody(resp *http.Response) []byte {
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
+	return body
 }
 
 func snapshotPath(channel int, opts SnapshotOptions) string {
