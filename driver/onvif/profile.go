@@ -4,22 +4,28 @@ import (
 	"context"
 	"fmt"
 
+	usego "github.com/use-go/onvif"
 	usemedia "github.com/use-go/onvif/media"
 
-	xml "github.com/andriantp/camera/driver/onvif/xml"
+	"github.com/andriantp/camera/driver/onvif/xml"
 	"github.com/andriantp/camera/model"
 )
 
 func (c *Client) GetProfiles(ctx context.Context, camera Camera) ([]model.Profile, error) {
-	dev, err := c.device(ctx, camera)
+	var result []model.Profile
+
+	err := c.withDevice(ctx, camera, func(dev *usego.Device) error {
+		resp, err := dev.CallMethod(usemedia.GetProfiles{})
+		if err != nil {
+			return fmt.Errorf("get profiles: %w", err)
+		}
+
+		result, err = xml.ParseProfiles(resp)
+		return err
+	})
 	if err != nil {
-		return nil, fmt.Errorf("create device: %w", err)
+		return nil, err
 	}
 
-	resp, err := dev.CallMethod(usemedia.GetProfiles{})
-	if err != nil {
-		return nil, fmt.Errorf("get profiles: %w", err)
-	}
-
-	return xml.ParseProfiles(resp)
+	return result, nil
 }

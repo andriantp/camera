@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	usego "github.com/use-go/onvif"
 	useptz "github.com/use-go/onvif/ptz"
 	onvif2 "github.com/use-go/onvif/xsd/onvif"
 
@@ -14,47 +15,53 @@ import (
 )
 
 func (c *Client) RelativeMove(ctx context.Context, camera Camera, panTilt model.PanTilt, wait time.Duration) (*model.Status, error) {
-	dev, err := c.device(ctx, camera)
-	if err != nil {
-		return nil, fmt.Errorf("create device: %w", err)
-	}
+	err := c.withDevice(ctx, camera, func(dev *usego.Device) error {
+		resp, err := dev.CallMethod(useptz.RelativeMove{
+			ProfileToken: onvif2.ReferenceToken(camera.Profile),
+			Translation: onvif2.PTZVector{
+				PanTilt: onvif2.Vector2D{
+					X:     panTilt.X,
+					Y:     panTilt.Y,
+					Space: "http://www.onvif.org/ver10/tptz/PanTiltSpaces/TranslationGenericSpace",
+				},
+				Zoom: onvif2.Vector1D{
+					X:     0,
+					Space: "http://www.onvif.org/ver10/tptz/ZoomSpaces/TranslationGenericSpace",
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("relative move: %w", err)
+		}
 
-	resp, err := dev.CallMethod(useptz.RelativeMove{
-		ProfileToken: onvif2.ReferenceToken(camera.Profile),
-		Translation: onvif2.PTZVector{
-			PanTilt: onvif2.Vector2D{
-				X:     panTilt.X,
-				Y:     panTilt.Y,
-				Space: "http://www.onvif.org/ver10/tptz/PanTiltSpaces/TranslationGenericSpace",
-			},
-			Zoom: onvif2.Vector1D{
-				X:     0,
-				Space: "http://www.onvif.org/ver10/tptz/ZoomSpaces/TranslationGenericSpace",
-			},
-		},
+		defer resp.Body.Close()
+
+		bs, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("read response body: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("relative move: status %d: %s", resp.StatusCode, bs)
+		}
+
+		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("relative move: %w", err)
+		return nil, err
 	}
 
-	defer resp.Body.Close()
-
-	bs, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read response body: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s", bs)
-	}
-
+	// Wait outside withDevice so other calls to this camera are not blocked.
 	if wait > 0 {
+		timer := time.NewTimer(wait)
+		defer timer.Stop()
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(wait):
+		case <-timer.C:
 		}
 	}
 
-	return c.getStatus(dev, camera.Profile)
+	return c.GetStatus(ctx, camera)
 }

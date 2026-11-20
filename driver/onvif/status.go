@@ -13,15 +13,21 @@ import (
 )
 
 func (c *Client) GetStatus(ctx context.Context, camera Camera) (*model.Status, error) {
-	dev, err := c.device(ctx, camera)
+	var result *model.Status
+
+	err := c.withDevice(ctx, camera, func(dev *usego.Device) error {
+		var err error
+		result, err = getStatus(dev, camera.Profile)
+		return err
+	})
 	if err != nil {
-		return nil, fmt.Errorf("create device: %w", err)
+		return nil, err
 	}
 
-	return c.getStatus(dev, camera.Profile)
+	return result, nil
 }
 
-func (c *Client) getStatus(dev *usego.Device, profile string) (*model.Status, error) {
+func getStatus(dev *usego.Device, profile string) (*model.Status, error) {
 	resp, err := dev.CallMethod(useptz.GetStatus{
 		ProfileToken: onvif2.ReferenceToken(profile),
 	})

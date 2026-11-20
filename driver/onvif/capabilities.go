@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	usego "github.com/use-go/onvif"
 	usedevice "github.com/use-go/onvif/device"
 
 	"github.com/andriantp/camera/driver/onvif/xml"
@@ -11,17 +12,22 @@ import (
 )
 
 func (c *Client) GetCapabilities(ctx context.Context, camera Camera) (*model.Capabilities, error) {
-	dev, err := c.device(ctx, camera)
-	if err != nil {
-		return nil, fmt.Errorf("create device: %w", err)
-	}
+	var result *model.Capabilities
 
-	resp, err := dev.CallMethod(usedevice.GetCapabilities{
-		Category: "All",
+	err := c.withDevice(ctx, camera, func(dev *usego.Device) error {
+		resp, err := dev.CallMethod(usedevice.GetCapabilities{
+			Category: "All",
+		})
+		if err != nil {
+			return fmt.Errorf("get capabilities: %w", err)
+		}
+
+		result, err = xml.ParseCapabilities(resp)
+		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get capabilities: %w", err)
+		return nil, err
 	}
 
-	return xml.ParseCapabilities(resp)
+	return result, nil
 }

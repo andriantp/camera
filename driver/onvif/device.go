@@ -3,44 +3,94 @@ package onvif
 import (
 	"context"
 	"net/http"
+	"sync"
 
 	usego "github.com/use-go/onvif"
 )
 
-// device creates a use-go/onvif Device whose HTTP requests are bound to ctx.
-// use-go/onvif does not accept a context, so ctx is injected at the transport
-// level; cancelling ctx aborts any in-flight SOAP call.
-func (c *Client) device(ctx context.Context, camera Camera) (*usego.Device, error) {
-	dev, err := usego.NewDevice(usego.DeviceParams{
-		Xaddr:      camera.Host,
-		Username:   camera.Username,
-		Password:   camera.Password,
-		HttpClient: c.httpClientWithContext(ctx),
-	})
-	if err != nil {
-		// NewDevice replaces the underlying error with a generic message;
-		// surface cancellation/deadline errors so callers can detect them.
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, ctxErr
-		}
-		return nil, err
-	}
-
-	return dev, nil
+type deviceKey struct {
+	host     string
+	username string
+	password string
 }
 
-func (c *Client) httpClientWithContext(ctx context.Context) *http.Client {
+// cachedDevice is a use-go/onvif Device reused across calls to one camera.
+//
+// usego.NewDevice performs a GetCapabilities round trip to discover service
+// endpoints, so creating a Device per call doubles the SOAP traffic. The
+// Device's HTTP client cannot be replaced after creation, so to keep
+// per-call context support its transport reads the context of the call that
+// currently holds mu. Calls to the same camera are therefore serialized.
+type cachedDevice struct {
+	mu        sync.Mutex
+	dev       *usego.Device
+	transport *contextTransport
+}
+
+// withDevice runs fn with the camera's cached Device, binding all HTTP
+// requests made inside fn to ctx.
+func (c *Client) withDevice(ctx context.Context, camera Camera, fn func(dev *usego.Device) error) error {
+	cd := c.cachedDevice(camera)
+
+	cd.mu.Lock()
+	defer cd.mu.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	cd.transport.ctx = ctx
+	defer func() { cd.transport.ctx = context.Background() }()
+
+	if cd.dev == nil {
+		dev, err := usego.NewDevice(usego.DeviceParams{
+			Xaddr:      camera.Host,
+			Username:   camera.Username,
+			Password:   camera.Password,
+			HttpClient: cd.httpClient(c.http),
+		})
+		if err != nil {
+			// NewDevice replaces the underlying error with a generic message;
+			// surface cancellation/deadline errors so callers can detect them.
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return ctxErr
+			}
+			return err
+		}
+		cd.dev = dev
+	}
+
+	return fn(cd.dev)
+}
+
+func (c *Client) cachedDevice(camera Camera) *cachedDevice {
+	key := deviceKey{host: camera.Host, username: camera.Username, password: camera.Password}
+
+	if v, ok := c.devices.Load(key); ok {
+		return v.(*cachedDevice)
+	}
+
 	base := c.http.Transport
 	if base == nil {
 		base = http.DefaultTransport
 	}
 
-	client := *c.http
-	client.Transport = &contextTransport{ctx: ctx, base: base}
+	v, _ := c.devices.LoadOrStore(key, &cachedDevice{
+		transport: &contextTransport{ctx: context.Background(), base: base},
+	})
 
+	return v.(*cachedDevice)
+}
+
+func (cd *cachedDevice) httpClient(base *http.Client) *http.Client {
+	client := *base
+	client.Transport = cd.transport
 	return &client
 }
 
+// contextTransport attaches ctx to every outgoing request, because
+// use-go/onvif builds its requests without a context. ctx is only written
+// while the owning cachedDevice's mutex is held.
 type contextTransport struct {
 	ctx  context.Context
 	base http.RoundTripper
