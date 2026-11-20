@@ -136,7 +136,7 @@ func (c *Client) waitAbsolute(ctx context.Context, camera Camera, targetPosition
 			return nil, err
 		}
 
-		if almostEqual(current.Position.X, targetPosition.X) &&
+		if panAlmostEqual(current.Position.X, targetPosition.X) &&
 			almostEqual(current.Position.Y, targetPosition.Y) &&
 			almostEqual(current.Zoom, targetZoom) {
 			return current, nil
@@ -162,4 +162,14 @@ func (c *Client) waitAbsolute(ctx context.Context, camera Camera, targetPosition
 
 func almostEqual(a, b float64) bool {
 	return math.Abs(a-b) < 0.1
+}
+
+// panFullCircle is a full pan rotation in model units (tenths of a degree).
+const panFullCircle = 3600.0
+
+// panAlmostEqual compares pan positions on a circle, so 0 and 3600 (or
+// 3599.95 and 0.02) are treated as the same position.
+func panAlmostEqual(a, b float64) bool {
+	d := math.Mod(math.Abs(a-b), panFullCircle)
+	return math.Min(d, panFullCircle-d) < 0.1
 }
