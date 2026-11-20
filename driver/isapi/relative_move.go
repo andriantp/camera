@@ -50,5 +50,18 @@ func (c *Client) RelativeMove(ctx context.Context, camera Camera, speed model.Sp
 		return nil, fmt.Errorf("%d %s", resp.StatusCode, bs)
 	}
 
+	// The momentary command returns immediately while the camera keeps
+	// moving for `duration`; wait so the returned status reflects the move.
+	if duration > 0 {
+		timer := time.NewTimer(duration)
+		defer timer.Stop()
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+
 	return c.getStatus(ctx, camera)
 }
