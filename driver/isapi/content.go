@@ -2,6 +2,7 @@ package isapi
 
 import (
 	"context"
+	encxml "encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -88,17 +89,15 @@ func (c *Client) ContentSearch(ctx context.Context, camera Camera, req SearchReq
 }
 
 func (c *Client) ContentDownload(ctx context.Context, camera Camera, playbackURI string) (int64, io.ReadCloser, error) {
-	xmlPlaybackURI := strings.ReplaceAll(playbackURI, "&", "&amp;")
-
 	xmlBody := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <downloadRequest version="1.0" xmlns="http://www.isapi.org/ver20/XMLSchema">
 	<playbackURI>%s</playbackURI>
 	<userName>%s</userName>
 	<password>%s</password>
 </downloadRequest>`,
-		xmlPlaybackURI,
-		camera.Username,
-		camera.Password,
+		escapeXML(playbackURI),
+		escapeXML(camera.Username),
+		escapeXML(camera.Password),
 	)
 
 	resp, err := c.requestDownload(
@@ -121,4 +120,10 @@ func (c *Client) ContentDownload(ctx context.Context, camera Camera, playbackURI
 	}
 
 	return resp.ContentLength, resp.Body, nil
+}
+
+func escapeXML(s string) string {
+	var b strings.Builder
+	_ = encxml.EscapeText(&b, []byte(s))
+	return b.String()
 }
