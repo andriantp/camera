@@ -12,7 +12,7 @@ func TestEscapeXML(t *testing.T) {
 	tests := []string{
 		"plain",
 		`p&ss<w>"'`,
-		"rtsp://10.0.0.1/Streaming/tracks/101?starttime=20260101T000000Z&size=1024",
+		"rtsp://192.168.1.1/Streaming/tracks/101?starttime=20260101T000000Z&size=1024",
 	}
 
 	for _, in := range tests {

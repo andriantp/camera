@@ -16,7 +16,7 @@ func TestMarshalHTTPHostNotificationRoundTrip(t *testing.T) {
 		ProtocolType:             "HTTP",
 		ParameterFormatType:      "XML",
 		AddressingFormatType:     "ipaddress",
-		IPAddress:                "10.0.0.5",
+		IPAddress:                "192.168.1.64",
 		PortNo:                   8080,
 		UserName:                 "user",
 		HTTPAuthenticationMethod: "none",

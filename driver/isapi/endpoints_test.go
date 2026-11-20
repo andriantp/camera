@@ -92,7 +92,7 @@ func TestSimpleGetters(t *testing.T) {
 		"GET /ISAPI/Event/capabilities":                             {body: `<EventCap><isSupportHDFull>true</isSupportHDFull></EventCap>`},
 		"GET /ISAPI/Image/channels/1/capabilities":                  {body: `<ImageChannel><WDR><mode opt="open,close">open</mode></WDR></ImageChannel>`},
 		"GET /ISAPI/Smart/Capabilities":                             {body: `<SmartCap><isSupportROI>true</isSupportROI></SmartCap>`},
-		"GET /ISAPI/Event/notification/httpHosts":                   {body: `<HttpHostNotificationList><HttpHostNotification><id>1</id><ipAddress>10.0.0.5</ipAddress></HttpHostNotification></HttpHostNotificationList>`},
+		"GET /ISAPI/Event/notification/httpHosts":                   {body: `<HttpHostNotificationList><HttpHostNotification><id>1</id><ipAddress>192.168.1.64</ipAddress></HttpHostNotification></HttpHostNotificationList>`},
 		"GET /ISAPI/System/Video/inputs/channels/1/motionDetection": {body: `<MotionDetection><enabled>true</enabled><MotionDetectionLayout><sensitivityLevel>40</sensitivityLevel></MotionDetectionLayout></MotionDetection>`},
 	}
 	client, cam, _ := newRoutedCamera(t, routes)
@@ -159,7 +159,7 @@ func TestSimpleGetters(t *testing.T) {
 	}
 
 	hosts, err := client.GetHTTPHosts(ctx, cam)
-	if err != nil || len(hosts) != 1 || hosts[0].IPAddress != "10.0.0.5" {
+	if err != nil || len(hosts) != 1 || hosts[0].IPAddress != "192.168.1.64" {
 		t.Errorf("GetHTTPHosts = %+v, %v", hosts, err)
 	}
 
@@ -331,7 +331,7 @@ func TestSetHTTPHost(t *testing.T) {
 		ProtocolType:             "HTTP",
 		ParameterFormatType:      "XML",
 		AddressingFormatType:     "ipaddress",
-		IPAddress:                "10.0.0.5",
+		IPAddress:                "192.168.1.64",
 		PortNo:                   8080,
 		HTTPAuthenticationMethod: "none",
 	}
@@ -343,7 +343,7 @@ func TestSetHTTPHost(t *testing.T) {
 			t.Fatal(err)
 		}
 		body := rc.last(http.MethodPut).body
-		if !strings.Contains(body, "<ipAddress>10.0.0.5</ipAddress>") || !strings.Contains(body, "<portNo>8080</portNo>") {
+		if !strings.Contains(body, "<ipAddress>192.168.1.64</ipAddress>") || !strings.Contains(body, "<portNo>8080</portNo>") {
 			t.Errorf("body = %s", body)
 		}
 	})
