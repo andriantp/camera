@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/andriantp/camera/model"
 )
@@ -61,36 +60,12 @@ func (c *Client) SetZoom(ctx context.Context, camera Camera, zoom float64) (*mod
 		return nil, fmt.Errorf("%d %s", resp.StatusCode, response)
 	}
 
-	return c.waitZoom(ctx, camera, targetZoom)
-}
-
-func (c *Client) waitZoom(ctx context.Context, camera Camera, target float64) (*model.Absolute, error) {
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	timeout := time.NewTimer(5 * time.Second)
-	defer timeout.Stop()
-
-	for {
-		current, err := c.getAbsolute(ctx, camera)
-		if err != nil {
-			return nil, err
-		}
-
-		if almostEqual(current.Zoom, target) {
-			return current, nil
-		}
-
-		select {
-		case <-ticker.C:
-		case <-timeout.C:
-			return nil, fmt.Errorf(
-				"timeout waiting zoom target: %.2f, current: %.2f",
-				target,
-				current.Zoom,
-			)
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
+	return c.waitPosition(
+		ctx,
+		camera,
+		func(current *model.Absolute) bool {
+			return almostEqual(current.Zoom, targetZoom)
+		},
+		fmt.Sprintf("zoom=%.2f", targetZoom),
+	)
 }

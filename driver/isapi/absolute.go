@@ -7,7 +7,6 @@ import (
 	"math"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/andriantp/camera/driver/isapi/xml"
 	"github.com/andriantp/camera/model"
@@ -115,49 +114,16 @@ func (c *Client) SetAbsolute(ctx context.Context, camera Camera, position model.
 		return nil, fmt.Errorf("%d %s", resp.StatusCode, response)
 	}
 
-	return c.waitAbsolute(
+	return c.waitPosition(
 		ctx,
 		camera,
-		targetPosition,
-		targetZoom,
+		func(current *model.Absolute) bool {
+			return panAlmostEqual(current.Position.X, targetPosition.X) &&
+				almostEqual(current.Position.Y, targetPosition.Y) &&
+				almostEqual(current.Zoom, targetZoom)
+		},
+		fmt.Sprintf("x=%.2f y=%.2f zoom=%.2f", targetPosition.X, targetPosition.Y, targetZoom),
 	)
-}
-
-func (c *Client) waitAbsolute(ctx context.Context, camera Camera, targetPosition model.PanTilt, targetZoom float64) (*model.Absolute, error) {
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	timeout := time.NewTimer(5 * time.Second)
-	defer timeout.Stop()
-
-	for {
-		current, err := c.getAbsolute(ctx, camera)
-		if err != nil {
-			return nil, err
-		}
-
-		if panAlmostEqual(current.Position.X, targetPosition.X) &&
-			almostEqual(current.Position.Y, targetPosition.Y) &&
-			almostEqual(current.Zoom, targetZoom) {
-			return current, nil
-		}
-
-		select {
-		case <-ticker.C:
-		case <-timeout.C:
-			return nil, fmt.Errorf(
-				"timeout waiting absolute position: x=%.2f y=%.2f zoom=%.2f, current x=%.2f y=%.2f zoom=%.2f",
-				targetPosition.X,
-				targetPosition.Y,
-				targetZoom,
-				current.Position.X,
-				current.Position.Y,
-				current.Zoom,
-			)
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
 }
 
 func almostEqual(a, b float64) bool {

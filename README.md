@@ -53,6 +53,25 @@ go get github.com/andriantp/camera
 
 ## Quick Start
 
+### Configuration
+
+```go
+client := camera.New(camera.Config{
+    Timeout:         30 * time.Second, // HTTP timeout per request (default 30s)
+    DownloadTimeout: 5 * time.Minute,  // HTTP timeout for recording downloads (default 5m)
+    MoveTimeout:     10 * time.Second, // how long SetAbsolute/SetZoom wait for the camera to reach the target (default 5s)
+})
+```
+
+All fields are optional. A shorter `context` deadline always takes precedence.
+When `MoveTimeout` elapses, the error wraps `isapi.ErrMoveTimeout`:
+
+```go
+if errors.Is(err, isapi.ErrMoveTimeout) {
+    // camera did not reach the target in time
+}
+```
+
 ### ONVIF
 
 ```go
@@ -65,7 +84,7 @@ onvifClient := onvif.New(client)
 capabilities, err := onvifClient.GetCapabilities(
     context.Background(),
     onvif.Camera{
-        Camera: camera.Credential{
+        Credential: camera.Credential{
             Host:     "...",
             Username: "...",
             Password: "...",
@@ -89,7 +108,7 @@ isapiClient := isapi.New(client)
 capabilities, err := isapiClient.GetCapabilities(
     context.Background(),
     isapi.Camera{
-        Camera: camera.Credential{
+        Credential: camera.Credential{
             Host:     "...",
             Username: "...",
             Password: "...",
