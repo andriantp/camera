@@ -9,6 +9,7 @@ const (
 	// Wait    = 5 * time.Second
 	Wait = 500 * time.Millisecond
 
-	Profile = "profile_1"
-	Channel = 1
+	// Defaults used when Profile / Channel are not set in .env.
+	DefaultProfile = "profile_1"
+	DefaultChannel = 1
 )
